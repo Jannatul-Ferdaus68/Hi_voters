@@ -63,7 +63,11 @@ const infoText = document.getElementById("infoText");
 // 🔹 Highlight Bangla text
 function highlight(text, q) {
   if (!text || !q) return text || "-";
-  return text.replaceAll(q, `<mark>${q}</mark>`);
+
+  const cleanText = normalizeBangla(text);
+  const cleanQ = normalizeBangla(q);
+
+  return cleanText.replaceAll(cleanQ, `<mark>${cleanQ}</mark>`);
 }
 
 // 🔹 Render voters
@@ -155,9 +159,22 @@ searchInput.addEventListener("input", () => {
     return;
   }
 
-  filteredVoters = voters.filter(
-    v => v.name && v.name.includes(q)
-  );
+  function normalizeBangla(text) {
+  return text
+    .normalize("NFC")
+    .replace(/\u200C|\u200D/g, "") // remove ZWNJ / ZWJ
+    .trim();
+}
+
+filteredVoters = voters.filter(v => {
+  if (!v.name) return false;
+
+  const storedName = normalizeBangla(v.name);
+  const typedName = normalizeBangla(q);
+
+  return storedName.includes(typedName);
+});
+
 
   renderVoters();
 });
