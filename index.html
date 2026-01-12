@@ -60,17 +60,13 @@ const results = document.getElementById("results");
 const pagination = document.getElementById("pagination");
 const infoText = document.getElementById("infoText");
 
-// -----------------------
-// Highlight Bangla text
-// -----------------------
+// 🔹 Highlight Bangla text
 function highlight(text, q) {
   if (!text || !q) return text || "-";
   return text.replaceAll(q, `<mark>${q}</mark>`);
 }
 
-// -----------------------
-// Render voters
-// -----------------------
+// 🔹 Render voters
 function renderVoters() {
   results.innerHTML = "";
   pagination.innerHTML = "";
@@ -91,12 +87,12 @@ function renderVoters() {
 
     card.innerHTML = `
       <p><strong>নাম:</strong> ${highlight(v.name, q)}</p>
-      <p><strong>ভোটার নং:</strong> ${highlight(v.voter_id, q)}</p>
+      <p><strong>ভোটার নং:</strong> ${v.voter_id || "-"}</p>
       <p><strong>পিতা:</strong> ${v.father || "-"}</p>
-      <p><strong>মাতা:</strong> ${highlight(v.mother, q)}</p>
-      <p><strong>পেশা:</strong> ${highlight(v.occupation, q)}</p>
+      <p><strong>মাতা:</strong> ${v.mother || "-"}</p>
+      <p><strong>পেশা:</strong> ${v.occupation || "-"}</p>
       <p><strong>জন্ম তারিখ:</strong> ${v.date_of_birth || "-"}</p>
-      <p><strong>ঠিকানা:</strong> ${highlight(v.address, q)}</p>
+      <p><strong>ঠিকানা:</strong> ${v.address || "-"}</p>
     `;
 
     results.appendChild(card);
@@ -105,12 +101,9 @@ function renderVoters() {
   renderPagination();
 }
 
-// -----------------------
-// Pagination buttons
-// -----------------------
+// 🔹 Pagination
 function renderPagination() {
   const totalPages = Math.ceil(filteredVoters.length / perPage);
-
   if (totalPages <= 1) return;
 
   if (currentPage > 1) {
@@ -141,20 +134,15 @@ function renderPagination() {
   }
 }
 
-// -----------------------
-// Load JSON
-// -----------------------
+// 🔹 Load voters.json
 fetch("voters.json")
   .then(res => res.json())
   .then(data => {
     voters = data;
-    filteredVoters = [];
-    infoText.textContent = "অনুসন্ধানের জন্য উপরে লিখুন";
+    infoText.textContent = "নাম লিখে অনুসন্ধান করুন";
   });
 
-// -----------------------
-// Search (Bangla-friendly)
-// -----------------------
+// 🔹 Search ONLY by name
 searchInput.addEventListener("input", () => {
   const q = searchInput.value.trim();
   currentPage = 1;
@@ -163,23 +151,19 @@ searchInput.addEventListener("input", () => {
     filteredVoters = [];
     results.innerHTML = "";
     pagination.innerHTML = "";
-    infoText.textContent = "অনুসন্ধানের জন্য উপরে লিখুন";
+    infoText.textContent = "নাম লিখে অনুসন্ধান করুন";
     return;
   }
 
-  filteredVoters = voters.filter(v =>
-    (v.name && v.name.includes(q)) ||
-    (v.voter_id && v.voter_id.includes(q)) ||
-    (v.father && v.father.includes(q)) ||
-    (v.mother && v.mother.includes(q)) ||
-    (v.occupation && v.occupation.includes(q)) ||
-    (v.address && v.address.includes(q))
+  filteredVoters = voters.filter(
+    v => v.name && v.name.includes(q)
   );
 
   infoText.textContent = `মোট ফলাফল: ${filteredVoters.length}`;
   renderVoters();
 });
 </script>
+
 
 </body>
 </html>
