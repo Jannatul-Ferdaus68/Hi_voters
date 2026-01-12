@@ -60,6 +60,9 @@ const results = document.getElementById("results");
 const pagination = document.getElementById("pagination");
 const infoText = document.getElementById("infoText");
 
+/* ===============================
+   Bangla Normalization (Search only)
+================================ */
 function normalizeBangla(text) {
   if (!text) return "";
 
@@ -75,22 +78,15 @@ function normalizeBangla(text) {
     .replace(/\s+/g, "")
     .trim();
 }
-// 🔹 Highlight Bangla text
-function highlight(text, q) {
-  if (!text || !q) return text || "-";
 
-  const cleanText = normalizeBangla(text);
-  const cleanQ = normalizeBangla(q);
-
-  return cleanText.replaceAll(cleanQ, `<mark>${cleanQ}</mark>`);
-}
-
-// 🔹 Render voters
+/* ===============================
+   Render voters (USES filteredVoters)
+================================ */
 function renderVoters() {
   results.innerHTML = "";
   pagination.innerHTML = "";
 
-  if (filteredVoters.length === 0) {
+  if (!filteredVoters.length) {
     results.innerHTML = "<p class='text-center'>কোনো তথ্য পাওয়া যায়নি</p>";
     return;
   }
@@ -98,14 +94,13 @@ function renderVoters() {
   const start = (currentPage - 1) * perPage;
   const end = start + perPage;
   const pageItems = filteredVoters.slice(start, end);
-  const q = searchInput.value.trim();
 
   pageItems.forEach(v => {
     const card = document.createElement("div");
     card.className = "bg-white rounded-xl shadow p-4";
 
     card.innerHTML = `
-      <p><strong>নাম:</strong> ${highlight(v.name, q)}</p>
+      <p><strong>নাম:</strong> ${v.name || "-"}</p>
       <p><strong>ভোটার নং:</strong> ${v.voter_id || "-"}</p>
       <p><strong>পিতা:</strong> ${v.father || "-"}</p>
       <p><strong>মাতা:</strong> ${v.mother || "-"}</p>
@@ -120,7 +115,9 @@ function renderVoters() {
   renderPagination();
 }
 
-// 🔹 Pagination
+/* ===============================
+   Pagination
+================================ */
 function renderPagination() {
   const totalPages = Math.ceil(filteredVoters.length / perPage);
   if (totalPages <= 1) return;
@@ -153,36 +150,50 @@ function renderPagination() {
   }
 }
 
-// 🔹 Load voters.json
+/* ===============================
+   Load JSON
+================================ */
 fetch("voters.json")
   .then(res => res.json())
   .then(data => {
     voters = data;
-    infoText.textContent = "নাম লিখে অনুসন্ধান করুন";
+
+    // 🔥 pre-normalize once (PERFORMANCE BOOST)
+    voters.forEach(v => {
+      v._searchName = normalizeBangla(v.name || "");
+    });
+
+    filteredVoters = voters;
+    renderVoters();
+
+    infoText.textContent = `মোট ভোটার: ${voters.length}`;
   });
 
-// 🔹 Search ONLY by name
+/* ===============================
+   Search (NAME ONLY)
+================================ */
+let timer;
 searchInput.addEventListener("input", () => {
-  const q = normalizeBangla(searchInput.value);
+  clearTimeout(timer);
 
-  if (!q) {
-    renderVoters(voters); // original data
-    return;
-  }
+  timer = setTimeout(() => {
+    const q = normalizeBangla(searchInput.value);
+    currentPage = 1;
 
-  const filtered = voters.filter(v => {
-    if (!v.name) return false;
+    if (!q) {
+      filteredVoters = voters;
+      renderVoters();
+      return;
+    }
 
-    // 👇 Normalize ONLY for comparison
-    const normalizedName = normalizeBangla(v.name);
-    return normalizedName.includes(q);
-  });
+    filteredVoters = voters.filter(v =>
+      v._searchName.includes(q)
+    );
 
-  // 👇 Render ORIGINAL voters, not normalized text
-  renderVoters(filtered);
+    renderVoters();
+  }, 300);
 });
 </script>
-
 
 </body>
 </html>
