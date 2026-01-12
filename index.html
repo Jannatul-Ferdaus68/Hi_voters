@@ -60,6 +60,22 @@ const results = document.getElementById("results");
 const pagination = document.getElementById("pagination");
 const infoText = document.getElementById("infoText");
 
+function normalizeBangla(text) {
+  if (!text) return "";
+
+  return text
+    .normalize("NFC")
+    .replace(/\u200C|\u200D/g, "")       // ZWNJ / ZWJ
+    .replace(/য়/g, "য়")                 // normalize ya
+    .replace(/য/g, "য়")                  // OCR য → য়
+    .replace(/[া]/g, "")                 // remove vowel marks
+    .replace(/[িী]/g, "")
+    .replace(/[েৈ]/g, "")
+    .replace(/[োৌ]/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+} 
+
 // 🔹 Highlight Bangla text
 function highlight(text, q) {
   if (!text || !q) return text || "-";
@@ -148,35 +164,21 @@ fetch("voters.json")
 
 // 🔹 Search ONLY by name
 searchInput.addEventListener("input", () => {
-  const q = searchInput.value.trim();
-  currentPage = 1;
+  const q = normalizeBangla(searchInput.value);
 
-  if (q === "") {
-    filteredVoters = [];
-    results.innerHTML = "";
-    pagination.innerHTML = "";
-    infoText.textContent = "নাম লিখে অনুসন্ধান করুন";
+  if (!q) {
+    renderVoters(voters);
     return;
   }
 
-  function normalizeBangla(text) {
-  return text
-    .normalize("NFC")
-    .replace(/\u200C|\u200D/g, "") // remove ZWNJ / ZWJ
-    .trim();
-}
+  const filtered = voters.filter(v => {
+    if (!v.name) return false;
 
-filteredVoters = voters.filter(v => {
-  if (!v.name) return false;
+    const stored = normalizeBangla(v.name);
+    return stored.includes(q);
+  });
 
-  const storedName = normalizeBangla(v.name);
-  const typedName = normalizeBangla(q);
-
-  return storedName.includes(typedName);
-});
-
-
-  renderVoters();
+  renderVoters(filtered);
 });
 </script>
 
