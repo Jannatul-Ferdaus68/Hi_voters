@@ -1,92 +1,107 @@
-import pdfplumber
+import os
 import json
 import re
-import os
+from pdf2image import convert_from_path
+import pytesseract
 
-PDF_FOLDER = "pdfs"
-OUTPUT_FILE = "voters.json"
+# -------------------------
+# 1️⃣ Tesseract setup
+# -------------------------
+# Update this path if Tesseract is installed elsewhere
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
+# -------------------------
+# 2️⃣ Paths & folders
+# -------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PDF_FOLDER = os.path.join(BASE_DIR, "pdfs")  # Make sure your PDFs are in this folder
+OUTPUT_FILE = os.path.join(BASE_DIR, "voters.json")
+
+# -------------------------
+# 3️⃣ Poppler path
+# -------------------------
+# Update this path to where you extracted Poppler
+POPPLER_PATH = r"C:\poppler-25.12.0\Library\bin "
+
+# -------------------------
+# 4️⃣ Initialize
+# -------------------------
 voters = []
 
 def clean(text):
+    """Remove extra whitespace"""
     return re.sub(r"\s+", " ", text).strip()
 
-def extract_from_pdf(pdf_path):
-    local_voters = []
+def extract_from_text(text, source_pdf):
+    """Extract voter records from OCR text"""
+    records = []
+    lines = text.split("\n")
+    record = {}
 
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if not text:
-                continue
+    for line in lines:
+        line = clean(line)
 
-            lines = text.split("\n")
-            record = {}
-
-            for line in lines:
-                line = clean(line)
-
-                # Detect new voter entry (serial like 1., 2., 10.)
-                if re.match(r"^\d+\.", line):
-                    if record:
-                        local_voters.append(record)
-                    record = {
-                        "source_pdf": os.path.basename(pdf_path)
-                    }
-
-                # Name
-                if "নাম:" in line:
-                    record["name"] = clean(line.split("নাম:")[-1])
-
-                # Voter ID
-                if "ভোটার নং:" in line:
-                    record["voter_id"] = clean(line.split("ভোটার নং:")[-1])
-
-                # Father
-                if "পিতা:" in line:
-                    record["father"] = clean(line.split("পিতা:")[-1])
-
-                # Mother
-                if "মাতা:" in line:
-                    record["mother"] = clean(line.split("মাতা:")[-1])
-
-                # Occupation (পেশা)
-                if "পেশা:" in line:
-                    record["occupation"] = clean(line.split("পেশা:")[-1])
-
-                # Date of Birth
-                if "জন্ম তারিখ:" in line or "জĥ তািরখ:" in line:
-                    dob = re.findall(r"\d{2}/\d{2}/\d{4}", line)
-                    if dob:
-                        record["date_of_birth"] = dob[0]
-
-                # Address (multi-line safe)
-                if "ঠিকানা:" in line:
-                    record["address"] = clean(line.split("ঠিকানা:")[-1])
-                elif "address" in record and not any(
-                    key in line for key in [
-                        "নাম:", "ভোটার নং:", "পিতা:", "মাতা:",
-                        "পেশা:", "জন্ম", "ঠিকানা:"
-                    ]
-                ):
-                    record["address"] += " " + line
-
+        # New voter block if line starts with a number
+        if re.match(r"^\d+\.", line):
             if record:
-                local_voters.append(record)
+                records.append(record)
+            record = {"source_pdf": source_pdf}
 
-    return local_voters
+        if "নাম:" in line:
+            record["name"] = line.split("নাম:")[-1].strip()
 
+        if "ভোটার নং:" in line:
+            record["voter_id"] = line.split("ভোটার নং:")[-1].strip()
 
-# 🔁 Process all PDFs
+        if "পিতা:" in line:
+            record["father"] = line.split("পিতা:")[-1].strip()
+
+        if "মাতা:" in line:
+            record["mother"] = line.split("মাতা:")[-1].strip()
+
+        if "পেশা:" in line:
+            record["occupation"] = line.split("পেশা:")[-1].strip()
+
+        if "ঠিকানা:" in line:
+            record["address"] = line.split("ঠিকানা:")[-1].strip()
+
+        dob = re.findall(r"\d{2}/\d{2}/\d{4}", line)
+        if dob:
+            record["date_of_birth"] = dob[0]
+
+    if record:
+        records.append(record)
+
+    return records
+
+# -------------------------
+# 5️⃣ OCR Processing loop
+# -------------------------
 for file in os.listdir(PDF_FOLDER):
     if file.lower().endswith(".pdf"):
         pdf_path = os.path.join(PDF_FOLDER, file)
-        print(f"📄 Processing: {file}")
-        voters.extend(extract_from_pdf(pdf_path))
+        print(f"📄 OCR Processing: {file}")
 
+        # Convert PDF pages to images using Poppler
+        images = convert_from_path(
+            pdf_path,
+            dpi=300,
+            poppler_path=POPPLER_PATH
+        )
 
-# 💾 Save JSON
+        full_text = ""
+        for img in images:
+            # OCR in Bangla
+            text = pytesseract.image_to_string(img, lang="ben")
+            full_text += "\n" + text
+
+        # Extract voter records from OCR text
+        voters.extend(extract_from_text(full_text, file))
+
+# -------------------------
+# 6️⃣ Save JSON
+# -------------------------
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
     json.dump(voters, f, ensure_ascii=False, indent=2)
 
-print(f"\ DONE: Extracted {len(voters)} voter records")
+print(f"✅ DONE: Extracted {len(voters)} voter records into {OUTPUT_FILE}")
