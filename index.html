@@ -56,63 +56,108 @@
     </div>
 
     <script>
-  let voters = [];
+let voters = [];
+let currentPage = 1;
+const perPage = 20;
 
-  const searchInput = document.getElementById("searchInput");
-  const results = document.getElementById("results");
+const searchInput = document.getElementById("searchInput");
+const results = document.getElementById("results");
 
-  // Render function
-  function renderVoters(list) {
-    results.innerHTML = "";
+// ------------------
+// Render function with pagination
+// ------------------
+function renderVoters(list, page = 1) {
+  results.innerHTML = "";
+  currentPage = page;
 
-    if (list.length === 0) {
-      results.innerHTML = "<p>কোনো তথ্য পাওয়া যায়নি</p>";
-      return;
-    }
-
-    list.forEach((v) => {
-      const div = document.createElement("div");
-      div.className = "card";
-      div.innerHTML = `
-        <span><strong>নাম:</strong> ${v.name || "-"}</span>
-        <span><strong>ভোটার নং:</strong> ${v.voter_id || "-"}</span>
-        <span><strong>পিতা:</strong> ${v.father || "-"}</span>
-        <span><strong>মাতা:</strong> ${v.mother || "-"}</span>
-        <span><strong>পেশা:</strong> ${v.occupation || "-"}</span>
-        <span><strong>জন্ম তারিখ:</strong> ${v.date_of_birth || "-"}</span>
-        <span><strong>ঠিকানা:</strong> ${v.address || "-"}</span>
-      `;
-      results.appendChild(div);
-    });
+  if (list.length === 0) {
+    results.innerHTML = "<p>কোনো তথ্য পাওয়া যায়নি</p>";
+    return;
   }
 
-  // Load JSON and show ALL data by default
-  fetch("voters.json")
-    .then((res) => res.json())
-    .then((data) => {
-      voters = data;
-      renderVoters(voters); // 👈 show all voters initially
-    });
+  const start = (page - 1) * perPage;
+  const end = start + perPage;
+  const pageItems = list.slice(start, end);
 
-  // Search logic
-  searchInput.addEventListener("input", () => {
-    const q = searchInput.value.toLowerCase().trim();
-
-    if (q === "") {
-      renderVoters(voters); // 👈 reset to all data
-      return;
-    }
-
-    const filtered = voters.filter(
-      (v) =>
-        (v.name && v.name.toLowerCase().includes(q)) ||
-        (v.voter_id && v.voter_id.toLowerCase().includes(q)) ||
-        (v.occupation && v.occupation.toLowerCase().includes(q)) ||
-        (v.address && v.address.toLowerCase().includes(q))
-    );
-
-    renderVoters(filtered);
+  pageItems.forEach((v) => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <span><strong>নাম:</strong> ${v.name || "-"}</span>
+      <span><strong>ভোটার নং:</strong> ${v.voter_id || "-"}</span>
+      <span><strong>পিতা:</strong> ${v.father || "-"}</span>
+      <span><strong>মাতা:</strong> ${v.mother || "-"}</span>
+      <span><strong>পেশা:</strong> ${v.occupation || "-"}</span>
+      <span><strong>জন্ম তারিখ:</strong> ${v.date_of_birth || "-"}</span>
+      <span><strong>ঠিকানা:</strong> ${v.address || "-"}</span>
+    `;
+    results.appendChild(div);
   });
+
+  // Pagination buttons
+  const totalPages = Math.ceil(list.length / perPage);
+  const paginationDiv = document.createElement("div");
+  paginationDiv.style.marginTop = "10px";
+  paginationDiv.style.textAlign = "center";
+
+  if (page > 1) {
+    const prevBtn = document.createElement("button");
+    prevBtn.textContent = "পূর্ববর্তী";
+    prevBtn.onclick = () => renderVoters(list, page - 1);
+    prevBtn.style.marginRight = "10px";
+    paginationDiv.appendChild(prevBtn);
+  }
+
+  if (page < totalPages) {
+    const nextBtn = document.createElement("button");
+    nextBtn.textContent = "পরবর্তী";
+    nextBtn.onclick = () => renderVoters(list, page + 1);
+    paginationDiv.appendChild(nextBtn);
+  }
+
+  results.appendChild(paginationDiv);
+}
+
+// ------------------
+// Load JSON
+// ------------------
+fetch("voters.json")
+  .then((res) => res.json())
+  .then((data) => {
+    voters = data;
+    // Show a message if too many voters
+    if (voters.length > 500) {
+      results.innerHTML = "<p>অনুসন্ধানের জন্য নাম, ভোটার নং, পেশা বা ঠিকানা লিখুন।</p>";
+    } else {
+      renderVoters(voters); // small datasets only
+    }
+  });
+
+// ------------------
+// Search logic (Bangla-friendly)
+// ------------------
+searchInput.addEventListener("input", () => {
+  const q = searchInput.value.trim();
+  if (q === "") {
+    if (voters.length > 500) {
+      results.innerHTML = "<p>অনুসন্ধানের জন্য নাম, ভোটার নং, পেশা বা ঠিকানা লিখুন।</p>";
+    } else {
+      renderVoters(voters);
+    }
+    return;
+  }
+
+  const filtered = voters.filter(
+    (v) =>
+      (v.name && v.name.includes(q)) ||
+      (v.voter_id && v.voter_id.includes(q)) ||
+      (v.occupation && v.occupation.includes(q)) ||
+      (v.address && v.address.includes(q))
+  );
+
+  renderVoters(filtered, 1); // show first page of filtered results
+});
 </script>
+
   </body>
 </html>
