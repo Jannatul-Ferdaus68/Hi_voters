@@ -65,17 +65,16 @@ function normalizeBangla(text) {
 
   return text
     .normalize("NFC")
-    .replace(/\u200C|\u200D/g, "")       // ZWNJ / ZWJ
-    .replace(/য়/g, "য়")                 // normalize ya
-    .replace(/য/g, "য়")                  // OCR য → য়
-    .replace(/[া]/g, "")                 // remove vowel marks
+    .replace(/\u200C|\u200D/g, "")
+    .replace(/য়/g, "য়")
+    .replace(/য/g, "য়")
+    .replace(/[া]/g, "")
     .replace(/[িী]/g, "")
     .replace(/[েৈ]/g, "")
     .replace(/[োৌ]/g, "")
     .replace(/\s+/g, "")
     .trim();
-} 
-
+}
 // 🔹 Highlight Bangla text
 function highlight(text, q) {
   if (!text || !q) return text || "-";
@@ -167,17 +166,19 @@ searchInput.addEventListener("input", () => {
   const q = normalizeBangla(searchInput.value);
 
   if (!q) {
-    renderVoters(voters);
+    renderVoters(voters); // original data
     return;
   }
 
   const filtered = voters.filter(v => {
     if (!v.name) return false;
 
-    const stored = normalizeBangla(v.name);
-    return stored.includes(q);
+    // 👇 Normalize ONLY for comparison
+    const normalizedName = normalizeBangla(v.name);
+    return normalizedName.includes(q);
   });
 
+  // 👇 Render ORIGINAL voters, not normalized text
   renderVoters(filtered);
 });
 </script>
