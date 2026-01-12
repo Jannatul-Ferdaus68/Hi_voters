@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="bn">
+  <head>
+     <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <!--Tailwind-->
+        <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>Voter Information Search</title>
+
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f2f4f7;
+      }
+
+      .container {
+        max-width: 800px;
+        margin: 40px auto;
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+      }
+
+      input {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        margin-bottom: 20px;
+      }
+
+      .card {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 6px;
+        background: #fafafa;
+      }
+
+      .card span {
+        display: block;
+        margin-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>ভোটার তথ্য অনুসন্ধান</h1>
+
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="নাম / ভোটার নং / পেশা / এলাকা দিয়ে খুঁজুন"
+      />
+
+      <div id="results"></div>
+    </div>
+
+    <script>
+  let voters = [];
+
+  const searchInput = document.getElementById("searchInput");
+  const results = document.getElementById("results");
+
+  // Render function
+  function renderVoters(list) {
+    results.innerHTML = "";
+
+    if (list.length === 0) {
+      results.innerHTML = "<p>কোনো তথ্য পাওয়া যায়নি</p>";
+      return;
+    }
+
+    list.forEach((v) => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <span><strong>নাম:</strong> ${v.name || "-"}</span>
+        <span><strong>ভোটার নং:</strong> ${v.voter_id || "-"}</span>
+        <span><strong>পিতা:</strong> ${v.father || "-"}</span>
+        <span><strong>মাতা:</strong> ${v.mother || "-"}</span>
+        <span><strong>পেশা:</strong> ${v.occupation || "-"}</span>
+        <span><strong>জন্ম তারিখ:</strong> ${v.date_of_birth || "-"}</span>
+        <span><strong>ঠিকানা:</strong> ${v.address || "-"}</span>
+      `;
+      results.appendChild(div);
+    });
+  }
+
+  // Load JSON and show ALL data by default
+  fetch("voters.json")
+    .then((res) => res.json())
+    .then((data) => {
+      voters = data;
+      renderVoters(voters); // 👈 show all voters initially
+    });
+
+  // Search logic
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.toLowerCase().trim();
+
+    if (q === "") {
+      renderVoters(voters); // 👈 reset to all data
+      return;
+    }
+
+    const filtered = voters.filter(
+      (v) =>
+        (v.name && v.name.toLowerCase().includes(q)) ||
+        (v.voter_id && v.voter_id.toLowerCase().includes(q)) ||
+        (v.occupation && v.occupation.toLowerCase().includes(q)) ||
+        (v.address && v.address.toLowerCase().includes(q))
+    );
+
+    renderVoters(filtered);
+  });
+</script>
+  </body>
+</html>
